@@ -1,6 +1,7 @@
 import re
 from csv import writer
 from datetime import datetime
+from decimal import Decimal
 from io import StringIO
 from statistics import mean, stdev
 
@@ -9,11 +10,11 @@ from src.models.grade import generate_grading_file_name, get_teams_list
 from src.models.validate import InvalidInput, ensure_grading_directory_exists, ensure_not_empty, time_format
 
 
-def parse_grade(number: str):
-    return float(number.strip().replace(',', '.'))
+def parse_grade(number: str) -> Decimal:
+    return Decimal(number.strip().replace(',', '.'))
 
 
-def sum_partial_grades(team: str, grade_file_path: str):
+def sum_partial_grades(team: str, grade_file_path: str) -> Decimal:
     with open(grade_file_path, 'r') as f:
         grading_file_content = f.read()
 
@@ -21,16 +22,15 @@ def sum_partial_grades(team: str, grade_file_path: str):
     PARTIAL_GRADE_REGEX = "Résultat partiel" + BASE_GRADE_REGEX
 
     try:
-        raw_grades = re.findall(PARTIAL_GRADE_REGEX, grading_file_content)
-        partial_grades = [parse_grade(grade) for grade in raw_grades]
-        total_grade = sum(partial_grades)
+        raw_grades: list[str] = re.findall(PARTIAL_GRADE_REGEX, grading_file_content)
+        total_grade: Decimal = sum((parse_grade(grade) for grade in raw_grades), start=Decimal(0))
     except:
         raise InvalidInput(f"Missing or invalid partial grade for team {team}.")
 
     return total_grade
 
 
-def write_total_grade(grade_file_path: str, grade: int):
+def write_total_grade(grade_file_path: str, grade: Decimal) -> None:
     with open(grade_file_path, 'r') as f:
         grading_file_content = f.read()
 
@@ -41,7 +41,7 @@ def write_total_grade(grade_file_path: str, grade: int):
         f.write(grading_file_content)
 
 
-def extract_total_grade(team: str, grading_directory: str, assignment_sname: str):
+def extract_total_grade(team: str, grading_directory: str, assignment_sname: str) -> Decimal:
     repo_path = f"{grading_directory}/{team}"
     grade_file_path = f"{repo_path}/{generate_grading_file_name(assignment_sname)}"
 
@@ -57,7 +57,7 @@ def add_grade_to_student_info(student_info: list, grades_map: dict):
             }
 
 
-def write_grades_file(grading_directory: str, grades_map: dict, assignment_sname: str):
+def write_grades_file(grading_directory: str, grades_map: dict[str, Decimal], assignment_sname: str) -> None:
     info = read_grading_info(grading_directory)
     group_number = info["group_number"]
 
